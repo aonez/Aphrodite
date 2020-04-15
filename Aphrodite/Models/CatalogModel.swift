@@ -10,12 +10,8 @@ import CoreServices
 
 
 public var carPathLookup: [String:String] = [:]
+public var docURL = URL(fileURLWithPath: "/var/mobile/Documents/Aphrodite", isDirectory: true)
 
-#if !targetEnvironment(simulator)
-public let docURL: URL = URL(fileURLWithPath: "/var/mobile/Documents/Aphrodite", isDirectory: true)
-#else
-public let docURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-#endif
 
 class CatalogModel: ObservableObject {
     
@@ -40,9 +36,106 @@ class CatalogModel: ObservableObject {
     private func iOSFetch() {
         
         let fm = FileManager.default
+        let queue = OperationQueue()
+        
+        //Fetch App Asset Catalogs
+        queue.addOperation {
+            var appCARs: [AssetCatalog] = []
+            var appCARFiles: [String] = []
+            let apps = LSApplicationWorkspace().allInstalledApplications() as! [LSApplicationProxy]
+            for app in apps {
+                let carFile = app.bundleURL.path + "/Assets.car"
+                if fm.fileExists(atPath: carFile) {
+                    appCARFiles.append(carFile)
+                }
+            }
+            for carFile in appCARFiles {
+                let catalog = AssetCatalog(filePath: carFile)
+                appCARs.append(catalog)
+                
+            }
+            //appCARs = appCARs.sorted(by: { $0.name.lowercased() < $1.name.lowercased() })
+            self.AppCARs = appCARs
+        }
+        
+        //Fetch Control Center Asset Catalogs
+        queue.addOperation {
+            var ccCARs: [AssetCatalog] = []
+            var ccCARFiles: [String] = []
+            #if targetEnvironment(simulator)
+            let ccPath = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/ControlCenter/Bundles/"
+            #else
+            let ccPath = "/System/Library/ControlCenter/Bundles/"
+            #endif
+            if let ccBundles = try? fm.contentsOfDirectory(atPath: ccPath) {
+                for ccBundle in ccBundles {
+                    let carFile = "\(ccPath)/\(ccBundle)/Assets.car"
+                    if fm.fileExists(atPath: carFile) {
+                        ccCARFiles.append(carFile)
+                    }
+                }
+            }
+            for carFile in ccCARFiles {
+                let catalog = AssetCatalog(filePath: carFile)
+                ccCARs.append(catalog)
+            }
+            //ccCARs = ccCARs.sorted(by: { $0.name.lowercased() < $1.name.lowercased() })
+            self.CCCARs = ccCARs
+        }
+        
+        //Fetch Framework and Core Services Asset Catalogs
+        queue.addOperation {
+            var frameworkCARs: [AssetCatalog] = []
+            var frameworkCARFiles: [String] = []
+            #if targetEnvironment(simulator)
+            let frameworkPaths = [ "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/CoreServices", "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks","/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks"]
+            #else
+            let frameworkPaths = [ "/System/Library/CoreServices", "/System/Library/Frameworks", "/System/Library/PrivateFrameworks"]
+            #endif
+            for path in frameworkPaths {
+                if let frameworkBundles = try? fm.contentsOfDirectory(atPath: path) {
+                    for frameworkBundle in frameworkBundles {
+                        if frameworkBundle != "CoreGlyphs.bundle" {
+                            let carFile = "\(path)/\(frameworkBundle)/Assets.car"
+                            if fm.fileExists(atPath: carFile) {
+                                frameworkCARFiles.append(carFile)
+                            }
+                        }
+                    }
+                }
+            }
+            for carFile in frameworkCARFiles {
+                let catalog = AssetCatalog(filePath: carFile)
+                frameworkCARs.append(catalog)
+            }
+            //frameworkCARs = frameworkCARs.sorted(by: { $0.name.lowercased() < $1.name.lowercased() })
+            self.FrameworkCARs = frameworkCARs
+        }
+        
+        //setup doc folder
+        #if !targetEnvironment(simulator)
+        if !fm.fileExists(atPath: docURL.path) {
+            do {
+                try fm.createDirectory(at: docURL, withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                //revert to sandbox document folder if it fails to create the Aphrodite folder under /var/mobile/Documents/
+                docURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            }
+        }
+        #else
+        docURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        #endif
+
+        queue.waitUntilAllOperationsAreFinished()
+    }
+    
+    /*
+    private func iOSFetchGCD() {
+        
+        let fm = FileManager.default
         let group = DispatchGroup()
         let queue = DispatchQueue(label: "Aphrodite-ThreadSafeSerialQueue", qos: .userInteractive)
-
+        
         //Fetch App Asset Catalogs
         var appCARs: [AssetCatalog] = []
         var appCARFiles: [String] = []
@@ -69,91 +162,16 @@ class CatalogModel: ObservableObject {
         //appCARs = appCARs.sorted(by: { $0.name.lowercased() < $1.name.lowercased() })
         self.AppCARs = appCARs
         
-        
-        //Fetch Control Center Asset Catalogs
-        var ccCARs: [AssetCatalog] = []
-        var ccCARFiles: [String] = []
-        #if targetEnvironment(simulator)
-        let ccPath = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/ControlCenter/Bundles/"
-        #else
-        let ccPath = "/System/Library/ControlCenter/Bundles/"
-        #endif
-        if let ccBundles = try? fm.contentsOfDirectory(atPath: ccPath) {
-            for ccBundle in ccBundles {
-                let carFile = "\(ccPath)/\(ccBundle)/Assets.car"
-                if fm.fileExists(atPath: carFile) {
-                    ccCARFiles.append(carFile)
-                }
-            }
-        }
-        group.enter()
-        for carFile in ccCARFiles {
-            DispatchQueue.global(qos: .userInteractive).async {
-                let catalog = AssetCatalog(filePath: carFile)
-                queue.async {
-                    ccCARs.append(catalog)
-                    if ccCARs.count == ccCARFiles.count {
-                        group.leave()
-                    }
-                }
-            }
-        }
-        group.wait()
-        //ccCARs = ccCARs.sorted(by: { $0.name.lowercased() < $1.name.lowercased() })
-        self.CCCARs = ccCARs
-        
-        
-        //Fetch Framework and Core Services Asset Catalogs
-        var frameworkCARs: [AssetCatalog] = []
-        var frameworkCARFiles: [String] = []
-        #if targetEnvironment(simulator)
-        let frameworkPaths = [ "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/CoreServices", "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks","/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks"]
-        #else
-        let frameworkPaths = [ "/System/Library/CoreServices", "/System/Library/Frameworks", "/System/Library/PrivateFrameworks"]
-        #endif
-        for path in frameworkPaths {
-            if let frameworkBundles = try? fm.contentsOfDirectory(atPath: path) {
-                for frameworkBundle in frameworkBundles {
-                    if frameworkBundle != "CoreGlyphs.bundle" {
-                        let carFile = "\(path)/\(frameworkBundle)/Assets.car"
-                        if fm.fileExists(atPath: carFile) {
-                            frameworkCARFiles.append(carFile)
-                        }
-                    }
-                }
-            }
-        }
-        group.enter()
-        for carFile in frameworkCARFiles {
-            DispatchQueue.global(qos: .userInteractive).async {
-                let catalog = AssetCatalog(filePath: carFile)
-                queue.async {
-                    frameworkCARs.append(catalog)
-                    if frameworkCARs.count == frameworkCARFiles.count {
-                        group.leave()
-                    }
-                }
-            }
-        }
-        group.wait()
-        //frameworkCARs = frameworkCARs.sorted(by: { $0.name.lowercased() < $1.name.lowercased() })
-        self.FrameworkCARs = frameworkCARs
-        
-        //setup doc folder
-        #if !targetEnvironment(simulator)
-        if !fm.fileExists(atPath: docURL.path) {
-            try? fm.createDirectory(at: docURL, withIntermediateDirectories: true, attributes: nil)
-        }
-        #endif
-        
     }
+    */
+    
     
     private func macOSFetch() {
         
         let fm = FileManager.default
         let group = DispatchGroup()
         let queue = DispatchQueue(label: "Aphrodite-ThreadSafeSerialQueue", qos: .userInteractive)
-
+        
         //Fetch App Asset Catalogs
         var appCARs: [AssetCatalog] = []
         var appCARFiles: [String] = []

@@ -54,7 +54,7 @@ struct CatalogDetailsView: View {
                                 .cornerRadius(17.5)
                         }.buttonStyle(PlainButtonStyle())
                             .alert(isPresented: $showExportAlert) {
-                                Alert(title: Text("Export Completed"), message: Text("Assets are exported to /var/mobile/Documents/Aphrodite/"), dismissButton: .default(Text("Okay")))
+                                Alert(title: Text("Export Completed"), message: Text("Assets are exported to \(docURL)\(catalog.carID)/"), dismissButton: .default(Text("Okay")))
                         }
                         Spacer().frame(width: 25)
                         Button(action: {
@@ -69,7 +69,7 @@ struct CatalogDetailsView: View {
                                 .cornerRadius(17.5)
                         }.buttonStyle(PlainButtonStyle())
                             .alert(isPresented: $showCompileAlert) {
-                                Alert(title: Text("Catalog Recompiled"), message: Text("The new Asset Catalog file is saved to /var/mobile/Documents/Aphrodite/"), dismissButton: .default(Text("Okay")))
+                                Alert(title: Text("Catalog Recompiled"), message: Text("The new Asset Catalog file is saved to \(docURL)\(catalog.carID)/"), dismissButton: .default(Text("Okay")))
                         }
                         Spacer()
                     }.padding(.vertical, 15)
