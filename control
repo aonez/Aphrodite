@@ -1,6 +1,6 @@
 Package: com.joey-gm.aphrodite
 Name: Aphrodite
-Version: 0.6.12~beta1
+Version: 0.6.12~beta2
 Architecture: iphoneos-arm
 Description: Asset Catalog Editor
 Depiction: https://joey-gm.github.io/depictions/?p=com.joey-gm.aphrodite

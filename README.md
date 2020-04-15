@@ -8,7 +8,7 @@ With Aphrodite, you can browse, search, export and edit assets for `.car` files 
 
 **Supported asset types:**
 - Image, Icon, Color, PDF, Vector Glyph and Raw Data
-- (Editing is only available for images and icons as of beta 1)
+- (Editing is only available for images and icons as of beta 2)
  
 **Documentation:**
  - [Analysis on Asset Catalog and CoreUI Framework](https://www.patreon.com/posts/36000874)
