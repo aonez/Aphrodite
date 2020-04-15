@@ -16,6 +16,9 @@ after-stage::
 	ldid -S $(THEOS_STAGING_DIR)/Applications/Aphrodite.app/Aphrodite
 	ldid -SAphrodite/Aphrodite.entitlements $(THEOS_STAGING_DIR)/Applications/Aphrodite.app/Aphrodite
 
+clean:=$(shell tput sgr0)
+bold:=$(shell tput bold)
+yellow:=$(shell tput setaf 3)
 
 all::
 	$(info $(bold)$(yellow))
